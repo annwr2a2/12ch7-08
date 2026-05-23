@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاكاة تداخل الموجات المتقدمة - الأستاذ أنور البلوشي</title>
+    <style>
+        :root {
+            --bg-color: #fcfcfc; 
+            --text-color: #000000; 
+            --primary-color: #004085; 
+            --success-color: #155724; 
+            --danger-color: #721c24; 
+            --card-bg: #ffffff;
+            --border-color: #111111; 
+            --wave-red-dark: #cc0000;
+            --wave-yellow-dark: #bfa000;
+            
+            /* ألوان خطوط التداخل الديناميكية الجديدة */
+            --constructive-line: #28a745;
+            --destructive-line: #dc3545;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            font-weight: 900; 
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            border: 4px solid var(--border-color);
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 5px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        h1 { font-size: 32px; margin-bottom: 5px; }
+        h2, h3 { font-size: 24px; margin-top: 0; }
+
+        /* زر الشرح الصوتي */
+        .audio-btn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: #ffc107;
+            color: #000;
+            border: 3px solid var(--border-color);
+            padding: 15px 25px;
+            font-size: 18px;
+            font-weight: 900;
+            border-radius: 35px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+        }
+
+        .audio-btn:hover {
+            transform: scale(1.05);
+            background-color: #e0a800;
+        }
+
+        .simulation-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 35px;
+            background: #f0f0f0;
+            padding: 25px;
+            border-radius: 10px;
+            border: 3px solid var(--border-color);
+        }
+
+        canvas {
+            background: #ffffff;
+            border: 4px solid #000;
+            border-radius: 10px;
+            cursor: crosshair;
+            max-width: 100%;
+            display: block;
+        }
+
+        .controls-hint {
+            font-size: 16px;
+            text-align: center;
+            background: #e0e0e0;
+            padding: 10px 20px;
+            border-radius: 25px;
+            border: 2px solid #ccc;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 35px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 4px solid var(--text-color);
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 6px 6px 0px var(--text-color);
+        }
+
+        .card.constructive { border-color: var(--success-color); box-shadow: 6px 6px 0px var(--success-color); color: var(--success-color); }
+        .card.destructive { border-color: var(--danger-color); box-shadow: 6px 6px 0px var(--danger-color); color: var(--danger-color); }
+
+        .card h3 { border-bottom: 3px solid; padding-bottom: 10px; margin-bottom: 15px; }
+
+        .table-container { overflow-x: auto; margin-bottom: 35px; }
+        table { width: 100%; border-collapse: collapse; border: 4px solid var(--text-color); }
+        th, td { border: 3px solid var(--text-color); padding: 15px; text-align: center; font-size: 18px; }
+        th { background-color: #e0e0e0; font-weight: 900; }
+
+        .quiz-section {
+            background: #fff8e1; 
+            border: 4px solid #fbc02d;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 35px;
+            box-shadow: 6px 6px 0px #fbc02d;
+        }
+
+        .question-box { font-size: 20px; margin-bottom: 25px; line-height: 1.8; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+        @media (max-width: 600px) { .options-grid { grid-template-columns: 1fr; } }
+
+        .option-btn {
+            background: var(--card-bg);
+            border: 3px solid var(--text-color);
+            padding: 20px;
+            font-size: 18px;
+            font-weight: 900;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: right;
+            transition: all 0.2s;
+            line-height: 1.5;
+        }
+
+        .option-btn:hover { background: #eeeeee; transform: translateY(-2px); }
+        .feedback-box { margin-top: 25px; padding: 20px; border-radius: 8px; text-align: center; font-size: 20px; display: none; font-weight: 900; }
+
+        /* تصميم صندوق الحل التفصيلي الجديد */
+        .solution-box {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff1f2;
+            border-right: 5px solid var(--danger-color);
+            border-radius: 8px;
+            font-size: 18px;
+            color: var(--danger-color);
+            display: none;
+            animation: fadeIn 0.4s ease;
+            line-height: 1.8;
+            border-left: 1px solid #f5c6cb;
+            border-top: 1px solid #f5c6cb;
+            border-bottom: 1px solid #f5c6cb;
+        }
+        .solution-box strong { color: #bd2130; font-size: 19px; }
+        .solution-title {
+            font-size: 20px;
+            font-weight: 900;
+            border-bottom: 2px dashed var(--danger-color);
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            color: var(--danger-color);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .action-btn {
+            display: block;
+            width: 100%;
+            max-width: 350px;
+            margin: 25px auto 0 auto;
+            background-color: var(--text-color);
+            color: white;
+            border: 3px solid white;
+            padding: 18px 25px;
+            font-size: 18px;
+            font-weight: 900;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover { background-color: #333333; transform: scale(1.03); }
+        footer { text-align: center; margin-top: 50px; padding-top: 25px; border-top: 4px solid var(--border-color); font-size: 16px; color: #222; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <button class="audio-btn" onclick="playLessonExplanation()">
+            🔊 اضغط هنا للاستماع للشرح الواقعي
+        </button>
+        <h1>تداخل الموجات (Wave Interference)</h1>
+        <p>الفيزياء - الصف الثاني عشر | الفصل الدراسي الثاني - سلطنة عُمان</p>
+    </header>
+
+    <section class="simulation-container">
+        <h3>📊 لوحة المحاكاة المرئية (خطوط التداخل الديناميكية النشطة)</h3>
+        <p class="controls-hint">💡 حرك النقطة (P) الآن لمشاهدة <strong>خط التداخل الملون</strong> يتغير فوراً على الشاشة عند استيفاء الشروط الفيزيائية!</p>
+        <canvas id="interferenceCanvas" width="700" height="350"></canvas>
+    </section>
+
+    <section class="cards-grid">
+        <div class="card">
+            <h3>🔴 المسافة الأولى (d₁)</h3>
+            <p>المسافة من المصدر الأول للنقطة:</p>
+            <p><span id="dist1-val" style="color:var(--wave-red-dark); font-size: 22px;">0.00</span> λ</p>
+        </div>
+        <div class="card">
+            <h3>🟡 المسافة الثانية (d₂)</h3>
+            <p>المسافة من المصدر الثاني للنقطة:</p>
+            <p><span id="dist2-val" style="color:var(--wave-yellow-dark); font-size: 22px;">0.00</span> λ</p>
+        </div>
+        <div class="card" id="result-card">
+            <h3>📐 ناتج فرق المسار (ΔS)</h3>
+            <p>القانون المتبع: ΔS = |d₁ - d₂|</p>
+            <p>فرق المسار الحالي: <span id="path-diff-val" style="font-size: 22px;">0.00</span> λ</p>
+            <p>نوع التداخل الناتج: <span id="interference-type-val">---</span></p>
+        </div>
+    </section>
+
+    <section class="table-container">
+        <h3>📋 جدول التحليل الرياضي لشروط التداخل</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>نوع التداخل</th>
+                    <th>الشرط الرياضي (ΔS)</th>
+                    <th>مضاعفات الطول الموجي (λ)</th>
+                    <th>الحالة الفيزيائية المتوقعة</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="background-color: rgba(21, 87, 36, 0.1);">
+                    <td style="color: var(--success-color);">تداخل بنّاء (Max)</td>
+                    <td>ΔS = n · λ</td>
+                    <td>عدد صحيح: 0، 1λ، 2λ، 3λ...</td>
+                    <td>التقاء (قمة مع قمة) أو (قاع مع قاع) - تقوية عظمى</td>
+                </tr>
+                <tr style="background-color: rgba(114, 28, 36, 0.1);">
+                    <td style="color: var(--danger-color);">تداخل هدّام (Min)</td>
+                    <td>ΔS = (n + 0.5) · λ</td>
+                    <td>عدد كسري: 0.5λ، 1.5λ، 2.5λ...</td>
+                    <td>التقاء (قمة مع قاع) - انعدام السعة واستقرار السطح</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="quiz-section">
+        <h3>🎯 قسم التحدي الذكي والتقييم الصفي الفوري</h3>
+        <div id="question-container" class="question-box"></div>
+        <div class="options-grid" id="options-container"></div>
+        <div id="solution-box" class="solution-box"></div>
+        <div id="quiz-feedback" class="feedback-box"></div>
+        <button class="action-btn" onclick="generateNewQuestion()">🔄 توليد سؤال عشوائي جديد</button>
+    </section>
+
+    <footer>
+        <p>تم تطوير هذا التطبيق التعليمي التفاعلي خصيصاً لخدمة طلابنا الأعزاء بالمنهج العُماني</p>
+        <p><strong>إعداد وتطوير: الأستاذ أنور البلوشي | رقم الهاتف: 92818606</strong></p>
+    </footer>
+</div>
+
+<script>
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function speakHumanWithBreaths(phrases) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel(); 
+
+        let index = 0;
+
+        function speakNext() {
+            if (index >= phrases.length) return;
+
+            const text = phrases[index];
+            if (text.trim() === "PAUSE") {
+                setTimeout(() => { index++; speakNext(); }, 650); 
+            } else {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ar-OM'; 
+                utterance.rate = 0.78;  
+                utterance.pitch = 0.95; 
+
+                const voices = window.speechSynthesis.getVoices();
+                const arabicVoice = voices.find(v => v.lang.includes('ar') && (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('naeem')));
+                if (arabicVoice) utterance.voice = arabicVoice;
+
+                utterance.onend = () => {
+                    index++;
+                    setTimeout(speakNext, 200); 
+                };
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+        speakNext();
+    }
+
+    function playSuccessSound() {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(350, now); osc.frequency.exponentialRampToValueAtTime(700, now + 0.4);
+        gain.gain.setValueAtTime(0.2, now); gain.gain.linearRampToValueAtTime(0, now + 0.4);
+        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.4);
+        speakHumanWithBreaths(["أحسنتَ يا بطل.", "إجابة صحيحة وممتازة"]);
+    }
+
+    function playFailureSound() {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(220, now); osc.frequency.linearRampToValueAtTime(160, now + 0.3);
+        gain.gain.setValueAtTime(0.15, now); gain.gain.linearRampToValueAtTime(0, now + 0.3);
+        osc.connect(gain); gain.connect(audioCtx.destination); osc.start(now); osc.stop(now + 0.3);
+        speakHumanWithBreaths(["حاول مجدداً.", "تذكر شروط تداخل الموجات وبإذن الله ستصيب"]);
+    }
+
+    function playLessonExplanation() {
+        const lessonScript = [
+            "السلام عليكم ورحمة الله وبركاته، مرحباً بكم يا شباب في درسِ تداخلِ الموجاتِ.",
+            "PAUSE",
+            "انظُروا الآن إلى لوحةِ المحـاكاةِ التفاعليةِ أمامَكم في الشاشة.",
+            "عندمَا تـنطَلقُ الموجاتُ من المصادرِ المترابطةِ، وتلتقي عند نقطةٍ معينة؛ فإن ناتجَ الـتداخلِ يـعتمدُ اعتـماداً كليّاً على قيمة فرْقِ المَسار.",
+            "PAUSE",
+            "لاحظوا عند تحريكِ النقطةِ بِي، كيفَ يتغيَّرُ فرْقُ المَسارِ حِسابياً وخطوط التداخل تضيء بالألوان.",
+            "القاعدةُ المنهجيةُ هنا واضحةٌ،",
+            "PAUSE",
+            "إذا كانَ فرْقُ المسارِ عـدداً صحيحاً من الأطوال المَوْجِية؛ يَنشأُ خط تداخل بنَّاء باللون الأخضر تَقوى فيهِ سعةُ الموجة ونحصل على قمة عظمى.",
+            "PAUSE",
+            "أمَّا إذا كانَ فرْقُ المسارِ عـدداً كَسْرياً ونِصفياً؛ فإنهُ يَـحدُثُ خط تداخل هدَّام باللون الأحمر تَلغي فيهِ الموجاتُ بعضَهَا بَعْضاً ويستقر السطح.",
+            "PAUSE",
+            "والآنْ، أدعوكمْ للانتقالِ إلى قِسمِ التَّحدّي الصفي بالأسفلِ لتطبيقِ ما تعلّمناهُ."
+        ];
+        speakHumanWithBreaths(lessonScript);
+    }
+
+    const canvas = document.getElementById('interferenceCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const src1 = { x: 230, y: 175, color: '#cc0000', radius: 14 }; 
+    const src2 = { x: 470, y: 175, color: '#bfa000', radius: 14 }; 
+    let testPoint = { x: 350, y: 90 }; 
+    const wavelengthPx = 55; 
+
+    function drawSimulation() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // 1. جبهات الموجة الداكنة
+        for (let r = wavelengthPx; r < 500; r += wavelengthPx) {
+            ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(204, 0, 0, 0.45)'; 
+            ctx.beginPath(); ctx.arc(src1.x, src1.y, r, 0, Math.PI * 2); ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(191, 160, 0, 0.45)'; 
+            ctx.beginPath(); ctx.arc(src2.x, src2.y, r, 0, Math.PI * 2); ctx.stroke();
+        }
+
+        // 2. الحسابات الديناميكية لخطوط التداخل
+        const d1Px = Math.hypot(testPoint.x - src1.x, testPoint.y - src1.y);
+        const d2Px = Math.hypot(testPoint.x - src2.x, testPoint.y - src2.y);
+        const d1Lambda = d1Px / wavelengthPx;
+        const d2Lambda = d2Px / wavelengthPx;
+        const pathDiff = Math.abs(d1Lambda - d2Lambda);
+        const fractionalPart = pathDiff % 1;
+
+        let lineColor = '#000000'; 
+        let textMarker = "";
+        let isConstructive = false;
+        let isDestructive = false;
+
+        if (fractionalPart <= 0.18 || fractionalPart >= 0.82) {
+            lineColor = varName('--constructive-line', '#28a745'); 
+            textMarker = "خط تداخل بنّاء (تقوية عظمى)";
+            isConstructive = true;
+        } else if (fractionalPart >= 0.38 && fractionalPart <= 0.62) {
+            lineColor = varName('--destructive-line', '#dc3545'); 
+            textMarker = "خط تداخل هدّام (عقدة خمود)";
+            isDestructive = true;
+        }
+
+        ctx.lineWidth = (isConstructive || isDestructive) ? 5 : 3; 
+        if (!(isConstructive || isDestructive)) ctx.setLineDash([6, 6]);
+
+        ctx.strokeStyle = lineColor;
+        ctx.beginPath(); ctx.moveTo(src1.x, src1.y); ctx.lineTo(testPoint.x, testPoint.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(src2.x, src2.y); ctx.lineTo(testPoint.x, testPoint.y); ctx.stroke();
+        ctx.setLineDash([]); 
+
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(src1.x, src1.y, src1.radius, 0, Math.PI * 2); ctx.fillStyle = src1.color; ctx.fill(); ctx.strokeStyle = '#000'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(src2.x, src2.y, src2.radius, 0, Math.PI * 2); ctx.fillStyle = src2.color; ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(testPoint.x, testPoint.y, 13, 0, Math.PI * 2); ctx.fillStyle = '#000000'; ctx.fill(); ctx.stroke();
+
+        ctx.fillStyle = '#000000'; ctx.font = '900 16px Arial';
+        ctx.fillText("S1", src1.x - 10, src1.y + 35); 
+        ctx.fillText("S2", src2.x - 10, src2.y + 35); 
+        ctx.fillText("P", testPoint.x - 8, testPoint.y - 20);
+
+        if (textMarker !== "") {
+            ctx.fillStyle = lineColor;
+            ctx.font = '900 18px Arial';
+            ctx.fillText(textMarker, testPoint.x - 100, testPoint.y - 40);
+        }
+
+        updateCardsAndInterface(d1Lambda, d2Lambda, pathDiff, isConstructive, isDestructive);
+    }
+
+    function varName(name, fallback) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+    }
+
+    function updateCardsAndInterface(d1Lambda, d2Lambda, pathDiff, isConstructive, isDestructive) {
+        document.getElementById('dist1-val').textContent = d1Lambda.toFixed(2);
+        document.getElementById('dist2-val').textContent = d2Lambda.toFixed(2);
+        document.getElementById('path-diff-val').textContent = pathDiff.toFixed(2);
+
+        let interferenceType = "تراكب مختلط بين الحالتين";
+        const resultCard = document.getElementById('result-card');
+
+        if (isConstructive) {
+            interferenceType = "بنّاء عظيم (تقوية عظمى لسطح الماء)"; resultCard.className = "card constructive";
+        } else if (isDestructive) {
+            interferenceType = "هدّام كلي (خمود واستقرار السطح)"; resultCard.className = "card destructive";
+        } else {
+            resultCard.className = "card";
+        }
+        document.getElementById('interference-type-val').textContent = interferenceType;
+    }
+
+    function handleInteraction(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        testPoint.x = clientX - rect.left; testPoint.y = clientY - rect.top;
+        if (testPoint.x < 0) testPoint.x = 0; if (testPoint.x > canvas.width) testPoint.x = canvas.width;
+        if (testPoint.y < 0) testPoint.y = 0; if (testPoint.y > canvas.height) testPoint.y = canvas.height;
+        drawSimulation();
+    }
+
+    canvas.addEventListener('mousemove', handleInteraction);
+    canvas.addEventListener('touchmove', function(e) { e.preventDefault(); handleInteraction(e); }, { passive: false });
+    canvas.addEventListener('mousedown', handleInteraction);
+
+    // نظام الأسئلة العشوائي الدقيق (بدون تكرار مع خطوات الحل)
+    let currentSolutionHTML = "";
+    
+    const quizDatabase = [
+        {
+            // سؤال تداخل بناء (أعداد صحيحة)
+            getQuestion: () => {
+                const n = Math.floor(Math.random() * 3) + 2; // أرقام مثل 2, 3, 4
+                const d1 = 3.0;
+                const d2 = d1 + n; 
+                
+                return {
+                    text: `انطلقت موجة وقطعت مسافة <b>${d1.toFixed(1)}λ</b>، وانطلقت موجة أخرى من مصدر مترابط وقطعت مسافة <b>${d2.toFixed(1)}λ</b> لتلتقي معها عند نقطة (P). احسب فرق المَسار (ΔS) وحدد نوع التداخل المتكوّن رياضياً؟`,
+                    options: [
+                        { text: `<span dir="ltr">ΔS = ${n.toFixed(1)}λ</span> ، والنوع: تداخل بنّاء (تقوية)`, correct: true },
+                        { text: `<span dir="ltr">ΔS = ${n.toFixed(1)}λ</span> ، والنوع: تداخل هدّام (خمود)`, correct: false },
+                        { text: `<span dir="ltr">ΔS = ${(n + 0.5).toFixed(1)}λ</span> ، والنوع: تداخل هدّام (خمود)`, correct: false },
+                        { text: `<span dir="ltr">ΔS = ${(n + 0.5).toFixed(1)}λ</span> ، والنوع: تداخل بنّاء (تقوية)`, correct: false }
+                    ],
+                    solution: `
+                        <div class="solution-title">💡 خطوات الحل العلمي:</div>
+                        1. <strong>حساب فرق المسار (ΔS):</strong><br>
+                        &nbsp;&nbsp;&nbsp; ΔS = |d₁ - d₂| = |${d1.toFixed(1)}λ - ${d2.toFixed(1)}λ| = <strong><span dir="ltr">${n.toFixed(1)}λ</span></strong><br><br>
+                        2. <strong>تحديد نوع التداخل:</strong><br>
+                        &nbsp;&nbsp;&nbsp; بما أن فرق المسار عبارة عن <strong>عدد صحيح (n = ${n})</strong> من الأطوال الموجية، فإن الموجتين تصلان متفقتين في الطور (قمة مع قمة).<br>
+                        &nbsp;&nbsp;&nbsp; <strong>النتيجة:</strong> تداخل بنّاء (تقوية عظمى).
+                    `
+                };
+            }
+        },
+        {
+            // سؤال تداخل هدام (أنصاف)
+            getQuestion: () => {
+                const d1 = 2.0;
+                const diff = Math.floor(Math.random() * 3) + 1.5; // 1.5, 2.5, 3.5
+                const d2 = d1 + diff; 
+                
+                return {
+                    text: `تتداخل موجتان عند نقطة معينة؛ حيث قطعت الأولى مسافة <b>${d1.toFixed(1)}λ</b> وقطعت الثانية مسافة <b>${d2.toFixed(1)}λ</b>. ما هي القيمة الدقيقة لفرق المَسار (ΔS) وما نوع التداخل الفيزيائي الناتج؟`,
+                    options: [
+                        { text: `<span dir="ltr">ΔS = ${diff.toFixed(1)}λ</span> ، والنوع: تداخل هدّام كلي`, correct: true },
+                        { text: `<span dir="ltr">ΔS = ${diff.toFixed(1)}λ</span> ، والنوع: تداخل بنّاء كلي`, correct: false },
+                        { text: `<span dir="ltr">ΔS = ${(Math.floor(diff)).toFixed(1)}λ</span> ، والنوع: تداخل بنّاء كلي`, correct: false },
+                        { text: `<span dir="ltr">ΔS = ${(diff + 1).toFixed(1)}λ</span> ، والنوع: تداخل هدّام كلي`, correct: false }
+                    ],
+                    solution: `
+                        <div class="solution-title">💡 خطوات الحل العلمي:</div>
+                        1. <strong>حساب فرق المسار (ΔS):</strong><br>
+                        &nbsp;&nbsp;&nbsp; ΔS = |d₁ - d₂| = |${d1.toFixed(1)}λ - ${d2.toFixed(1)}λ| = <strong><span dir="ltr">${diff.toFixed(1)}λ</span></strong><br><br>
+                        2. <strong>تحديد نوع التداخل:</strong><br>
+                        &nbsp;&nbsp;&nbsp; بما أن فرق المسار يحتوي على <strong>نصف طول موجي (<span dir="ltr">${diff.toFixed(1)}λ</span>)</strong>، فإن الموجتين تصلان متعاكستين في الطور (قمة مع قاع).<br>
+                        &nbsp;&nbsp;&nbsp; <strong>النتيجة:</strong> تداخل هدّام (استقرار وانعدام للسعة).
+                    `
+                };
+            }
+        },
+        {
+            // أسئلة شروط وقواعد عامة
+            getQuestion: () => {
+                const isDestructive = Math.random() > 0.5;
+                const m = Math.floor(Math.random() * 3) + 2; // 2, 3, 4
+                
+                if (isDestructive) {
+                    const correctAns = m + 0.5; // 2.5, 3.5, 4.5
+                    return {
+                        text: `من الناحية الفيزيائية، أيٌّ من قيم فرق المسار (ΔS) التالية تحقق الشرط الرياضي لحدوث <strong>تداخل هدّام كلي</strong> (ينتج عنه عقدة خمود)؟`,
+                        options: [
+                            { text: `<span dir="ltr">ΔS = ${correctAns.toFixed(1)}λ</span>`, correct: true },
+                            { text: `<span dir="ltr">ΔS = ${(m).toFixed(1)}λ</span>`, correct: false },
+                            { text: `<span dir="ltr">ΔS = ${(m + 1).toFixed(1)}λ</span>`, correct: false },
+                            { text: `<span dir="ltr">ΔS = 0.0λ</span>`, correct: false }
+                        ],
+                        solution: `
+                            <div class="solution-title">💡 التفسير العلمي:</div>
+                            <strong>شرط التداخل الهدام:</strong> يحدث التداخل الهدام عندما يكون فرق المسار مساوياً لعدد فردي من أنصاف الأطوال الموجية، أو بصيغة أخرى <strong>ΔS = (n + 0.5)λ</strong>.<br><br>
+                            من بين الخيارات، القيمة الوحيدة التي تمثل كسراً نصفياً هي <strong><span dir="ltr">${correctAns.toFixed(1)}λ</span></strong>، بينما البقية تمثل أعداداً صحيحة تؤدي لتداخل بنّاء.
+                        `
+                    };
+                } else {
+                    const correctAns = m; // 2, 3, 4
+                    return {
+                        text: `من الناحية الفيزيائية، أيٌّ من قيم فرق المسار (ΔS) التالية تحقق الشرط الرياضي لحدوث <strong>تداخل بنّاء</strong> (ينتج عنه تقوية عظمى للموجات)؟`,
+                        options: [
+                            { text: `<span dir="ltr">ΔS = ${correctAns.toFixed(1)}λ</span>`, correct: true },
+                            { text: `<span dir="ltr">ΔS = ${(m + 0.5).toFixed(1)}λ</span>`, correct: false },
+                            { text: `<span dir="ltr">ΔS = ${(m - 0.5).toFixed(1)}λ</span>`, correct: false },
+                            { text: `<span dir="ltr">ΔS = 0.5λ</span>`, correct: false }
+                        ],
+                        solution: `
+                            <div class="solution-title">💡 التفسير العلمي:</div>
+                            <strong>شرط التداخل البنّاء:</strong> يحدث التداخل البنّاء عندما يكون فرق المسار مساوياً لعدد صحيح (كامل) من الأطوال الموجية، أو بصيغة أخرى <strong>ΔS = nλ</strong>.<br><br>
+                            من بين الخيارات، القيمة الوحيدة التي تمثل عدداً صحيحاً هي <strong><span dir="ltr">${correctAns.toFixed(1)}λ</span></strong>، بينما البقية تحتوي على أنصاف تؤدي لتداخل هدّام.
+                        `
+                    };
+                }
+            }
+        }
+    ];
+
+    function generateNewQuestion() {
+        const feedbackBox = document.getElementById('quiz-feedback');
+        const solutionBox = document.getElementById('solution-box');
+        
+        feedbackBox.style.display = 'none';
+        solutionBox.style.display = 'none';
+
+        const randomGenerator = quizDatabase[Math.floor(Math.random() * quizDatabase.length)];
+        const questionData = randomGenerator.getQuestion();
+        
+        document.getElementById('question-container').innerHTML = `<p>${questionData.text}</p>`;
+        currentSolutionHTML = questionData.solution;
+
+        const shuffledOptions = questionData.options.sort(() => Math.random() - 0.5);
+        const optionsContainer = document.getElementById('options-container');
+        optionsContainer.innerHTML = '';
+
+        shuffledOptions.forEach(option => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn'; 
+            btn.innerHTML = option.text;
+            btn.dataset.correct = option.correct; // لحفظ حالة الإجابة برمجياً
+            btn.onclick = () => checkStudentAnswer(option.correct, btn);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function checkStudentAnswer(isCorrect, selectedButton) {
+        const feedbackBox = document.getElementById('quiz-feedback');
+        const solutionBox = document.getElementById('solution-box');
+        
+        feedbackBox.style.display = 'block';
+        document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
+
+        if (isCorrect) {
+            feedbackBox.style.backgroundColor = 'rgba(21, 87, 36, 0.2)'; 
+            feedbackBox.style.color = 'var(--success-color)';
+            feedbackBox.style.border = '3px solid var(--success-color)';
+            feedbackBox.innerHTML = '✨ مـمتاز! إجـابتك صحيحة علمياً.';
+            
+            selectedButton.style.backgroundColor = '#155724'; 
+            selectedButton.style.color = '#ffffff';
+            
+            playSuccessSound();
+        } else {
+            feedbackBox.style.backgroundColor = 'rgba(114, 28, 36, 0.2)'; 
+            feedbackBox.style.color = 'var(--danger-color)';
+            feedbackBox.style.border = '3px solid var(--danger-color)';
+            feedbackBox.innerHTML = '❌ الإجابة غير صحيحة. اقرأ الشرح العلمي بالأسفل لتتعلم منها:';
+            
+            selectedButton.style.backgroundColor = '#721c24'; 
+            selectedButton.style.color = '#ffffff';
+
+            // تظليل الإجابة الصحيحة لتوضيحها للطالب
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                if (btn.dataset.correct === "true") {
+                    btn.style.backgroundColor = '#28a745'; 
+                    btn.style.color = '#ffffff';
+                }
+            });
+
+            // إظهار صندوق الحل التفصيلي
+            solutionBox.innerHTML = currentSolutionHTML;
+            solutionBox.style.display = "block";
+            
+            playFailureSound();
+        }
+    }
+
+    window.onload = () => {
+        drawSimulation(); 
+        generateNewQuestion();
+        if ('speechSynthesis' in window) { window.speechSynthesis.getVoices(); }
+    };
+</script>
+
+</body>
+</html>
