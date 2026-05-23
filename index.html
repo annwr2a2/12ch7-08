@@ -93,18 +93,23 @@
             background: #ffffff;
             border: 4px solid #000;
             border-radius: 10px;
-            cursor: crosshair;
-            max-width: 100%;
+            cursor: pointer;
+            width: 100%;
+            max-width: 700px;
+            height: auto;
+            aspect-ratio: 2 / 1; 
             display: block;
+            touch-action: none; 
         }
 
         .controls-hint {
-            font-size: 16px;
+            font-size: 17px;
             text-align: center;
             background: #e0e0e0;
-            padding: 10px 20px;
+            padding: 12px 25px;
             border-radius: 25px;
             border: 2px solid #ccc;
+            color: #d9381e;
         }
 
         .cards-grid {
@@ -144,7 +149,10 @@
         .question-box { font-size: 20px; margin-bottom: 25px; line-height: 1.8; }
         .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
-        @media (max-width: 600px) { .options-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 600px) { 
+            .options-grid { grid-template-columns: 1fr; } 
+            .audio-btn { position: static; display: inline-flex; justify-content: center; margin-bottom: 15px; }
+        }
 
         .option-btn {
             background: var(--card-bg);
@@ -162,7 +170,6 @@
         .option-btn:hover { background: #eeeeee; transform: translateY(-2px); }
         .feedback-box { margin-top: 25px; padding: 20px; border-radius: 8px; text-align: center; font-size: 20px; display: none; font-weight: 900; }
 
-        /* تصميم صندوق الحل التفصيلي الجديد */
         .solution-box {
             margin-top: 20px;
             padding: 20px;
@@ -227,7 +234,7 @@
 
     <section class="simulation-container">
         <h3>📊 لوحة المحاكاة المرئية (خطوط التداخل الديناميكية النشطة)</h3>
-        <p class="controls-hint">💡 حرك النقطة (P) الآن لمشاهدة <strong>خط التداخل الملون</strong> يتغير فوراً على الشاشة عند استيفاء الشروط الفيزيائية!</p>
+        <p class="controls-hint">💡 اضغط على أي مكان في الشاشة لرسم مسار الموجات واكتشاف نوع التداخل!</p>
         <canvas id="interferenceCanvas" width="700" height="350"></canvas>
     </section>
 
@@ -355,7 +362,7 @@
             "انظُروا الآن إلى لوحةِ المحـاكاةِ التفاعليةِ أمامَكم في الشاشة.",
             "عندمَا تـنطَلقُ الموجاتُ من المصادرِ المترابطةِ، وتلتقي عند نقطةٍ معينة؛ فإن ناتجَ الـتداخلِ يـعتمدُ اعتـماداً كليّاً على قيمة فرْقِ المَسار.",
             "PAUSE",
-            "لاحظوا عند تحريكِ النقطةِ بِي، كيفَ يتغيَّرُ فرْقُ المَسارِ حِسابياً وخطوط التداخل تضيء بالألوان.",
+            "لاحظوا عند الضغطِ على أي نقطة، كيفَ تُرسمُ المسارات ويتغيَّرُ فرْقُ المَسارِ حِسابياً وخطوط التداخل تضيء بالألوان.",
             "القاعدةُ المنهجيةُ هنا واضحةٌ،",
             "PAUSE",
             "إذا كانَ فرْقُ المسارِ عـدداً صحيحاً من الأطوال المَوْجِية؛ يَنشأُ خط تداخل بنَّاء باللون الأخضر تَقوى فيهِ سعةُ الموجة ونحصل على قمة عظمى.",
@@ -367,6 +374,7 @@
         speakHumanWithBreaths(lessonScript);
     }
 
+    // إعدادات الكانفاس والمحاكاة التفاعلية بالتسلسل
     const canvas = document.getElementById('interferenceCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -375,19 +383,27 @@
     let testPoint = { x: 350, y: 90 }; 
     const wavelengthPx = 55; 
 
-    function drawSimulation() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // متغيرات حالة الأنيميشن
+    let animState = 'result'; 
+    let animProgress1 = 0;
+    let animProgress2 = 0;
+    let calculatedResult = null;
 
-        // 1. جبهات الموجة الداكنة
-        for (let r = wavelengthPx; r < 500; r += wavelengthPx) {
-            ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(204, 0, 0, 0.45)'; 
-            ctx.beginPath(); ctx.arc(src1.x, src1.y, r, 0, Math.PI * 2); ctx.stroke();
+    function getPointerPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
 
-            ctx.strokeStyle = 'rgba(191, 160, 0, 0.45)'; 
-            ctx.beginPath(); ctx.arc(src2.x, src2.y, r, 0, Math.PI * 2); ctx.stroke();
-        }
-
-        // 2. الحسابات الديناميكية لخطوط التداخل
+    function preCalculate() {
         const d1Px = Math.hypot(testPoint.x - src1.x, testPoint.y - src1.y);
         const d2Px = Math.hypot(testPoint.x - src2.x, testPoint.y - src2.y);
         const d1Lambda = d1Px / wavelengthPx;
@@ -395,7 +411,7 @@
         const pathDiff = Math.abs(d1Lambda - d2Lambda);
         const fractionalPart = pathDiff % 1;
 
-        let lineColor = '#000000'; 
+        let lineColor = '#555555'; 
         let textMarker = "";
         let isConstructive = false;
         let isDestructive = false;
@@ -410,13 +426,25 @@
             isDestructive = true;
         }
 
-        ctx.lineWidth = (isConstructive || isDestructive) ? 5 : 3; 
-        if (!(isConstructive || isDestructive)) ctx.setLineDash([6, 6]);
+        return { d1Lambda, d2Lambda, pathDiff, isConstructive, isDestructive, lineColor, textMarker };
+    }
 
-        ctx.strokeStyle = lineColor;
-        ctx.beginPath(); ctx.moveTo(src1.x, src1.y); ctx.lineTo(testPoint.x, testPoint.y); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(src2.x, src2.y); ctx.lineTo(testPoint.x, testPoint.y); ctx.stroke();
-        ctx.setLineDash([]); 
+    function resetUI() {
+        document.getElementById('dist1-val').textContent = "...";
+        document.getElementById('dist2-val').textContent = "...";
+        document.getElementById('path-diff-val').textContent = "...";
+        document.getElementById('interference-type-val').textContent = "جاري تتبع مسار الموجات...";
+        document.getElementById('result-card').className = "card";
+    }
+
+    function drawBackground() {
+        for (let r = wavelengthPx; r < 500; r += wavelengthPx) {
+            ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(204, 0, 0, 0.45)'; 
+            ctx.beginPath(); ctx.arc(src1.x, src1.y, r, 0, Math.PI * 2); ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(191, 160, 0, 0.45)'; 
+            ctx.beginPath(); ctx.arc(src2.x, src2.y, r, 0, Math.PI * 2); ctx.stroke();
+        }
 
         ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(src1.x, src1.y, src1.radius, 0, Math.PI * 2); ctx.fillStyle = src1.color; ctx.fill(); ctx.strokeStyle = '#000'; ctx.stroke();
@@ -427,15 +455,101 @@
         ctx.fillText("S1", src1.x - 10, src1.y + 35); 
         ctx.fillText("S2", src2.x - 10, src2.y + 35); 
         ctx.fillText("P", testPoint.x - 8, testPoint.y - 20);
-
-        if (textMarker !== "") {
-            ctx.fillStyle = lineColor;
-            ctx.font = '900 18px Arial';
-            ctx.fillText(textMarker, testPoint.x - 100, testPoint.y - 40);
-        }
-
-        updateCardsAndInterface(d1Lambda, d2Lambda, pathDiff, isConstructive, isDestructive);
     }
+
+    function drawPartialLine(startPos, endPos, progress, color) {
+        const currentX = startPos.x + (endPos.x - startPos.x) * progress;
+        const currentY = startPos.y + (endPos.y - startPos.y) * progress;
+        
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(startPos.x, startPos.y);
+        ctx.lineTo(currentX, currentY);
+        ctx.stroke();
+    }
+
+    function animationLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBackground();
+
+        const speed = 0.04; 
+
+        if (animState === 'line1') {
+            animProgress1 += speed;
+            drawPartialLine(src1, testPoint, Math.min(animProgress1, 1), '#444');
+            
+            if (animProgress1 >= 1) {
+                animProgress1 = 1;
+                animState = 'line2';
+            }
+            requestAnimationFrame(animationLoop);
+        } 
+        else if (animState === 'line2') {
+            drawPartialLine(src1, testPoint, 1, '#444');
+            animProgress2 += speed;
+            drawPartialLine(src2, testPoint, Math.min(animProgress2, 1), '#444');
+            
+            if (animProgress2 >= 1) {
+                animProgress2 = 1;
+                animState = 'result';
+            }
+            requestAnimationFrame(animationLoop);
+        } 
+        else if (animState === 'result') {
+            const res = calculatedResult;
+            ctx.lineWidth = (res.isConstructive || res.isDestructive) ? 5 : 3;
+            if (!(res.isConstructive || res.isDestructive)) ctx.setLineDash([6, 6]);
+            
+            ctx.strokeStyle = res.lineColor;
+            ctx.beginPath(); ctx.moveTo(src1.x, src1.y); ctx.lineTo(testPoint.x, testPoint.y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(src2.x, src2.y); ctx.lineTo(testPoint.x, testPoint.y); ctx.stroke();
+            ctx.setLineDash([]);
+
+            if (res.textMarker !== "") {
+                ctx.fillStyle = res.lineColor;
+                ctx.font = '900 18px Arial';
+                
+                // --- نظام الحماية الذكي لمنع النص من الخروج عن حدود الشاشة ---
+                let textWidth = ctx.measureText(res.textMarker).width;
+                let textX = testPoint.x - (textWidth / 2); // محاذاة في المنتصف الافتراضي
+                let textY = testPoint.y - 35; // فوق النقطة الافتراضي
+
+                // منع خروج النص من الأعلى (نقل النص لأسفل النقطة)
+                if (textY < 25) {
+                    textY = testPoint.y + 45;
+                }
+                
+                // منع خروج النص من اليمين أو اليسار
+                if (textX < 10) { textX = 10; }
+                if (textX + textWidth > canvas.width - 10) { textX = canvas.width - textWidth - 10; }
+                
+                ctx.fillText(res.textMarker, textX, textY);
+                // -----------------------------------------------------------------
+            }
+
+            updateCardsAndInterface(res.d1Lambda, res.d2Lambda, res.pathDiff, res.isConstructive, res.isDestructive);
+        }
+    }
+
+    function handleInteraction(e) {
+        if(e.cancelable) e.preventDefault(); 
+        const pos = getPointerPos(e);
+        testPoint.x = Math.max(0, Math.min(pos.x, canvas.width));
+        testPoint.y = Math.max(0, Math.min(pos.y, canvas.height));
+
+        resetUI();
+        calculatedResult = preCalculate();
+        
+        animState = 'line1';
+        animProgress1 = 0;
+        animProgress2 = 0;
+        
+        requestAnimationFrame(animationLoop);
+    }
+
+    canvas.addEventListener('mousedown', handleInteraction);
+    canvas.addEventListener('touchstart', handleInteraction, { passive: false });
 
     function varName(name, fallback) {
         return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
@@ -459,28 +573,12 @@
         document.getElementById('interference-type-val').textContent = interferenceType;
     }
 
-    function handleInteraction(e) {
-        const rect = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        testPoint.x = clientX - rect.left; testPoint.y = clientY - rect.top;
-        if (testPoint.x < 0) testPoint.x = 0; if (testPoint.x > canvas.width) testPoint.x = canvas.width;
-        if (testPoint.y < 0) testPoint.y = 0; if (testPoint.y > canvas.height) testPoint.y = canvas.height;
-        drawSimulation();
-    }
-
-    canvas.addEventListener('mousemove', handleInteraction);
-    canvas.addEventListener('touchmove', function(e) { e.preventDefault(); handleInteraction(e); }, { passive: false });
-    canvas.addEventListener('mousedown', handleInteraction);
-
-    // نظام الأسئلة العشوائي الدقيق (بدون تكرار مع خطوات الحل)
     let currentSolutionHTML = "";
     
     const quizDatabase = [
         {
-            // سؤال تداخل بناء (أعداد صحيحة)
             getQuestion: () => {
-                const n = Math.floor(Math.random() * 3) + 2; // أرقام مثل 2, 3, 4
+                const n = Math.floor(Math.random() * 3) + 2; 
                 const d1 = 3.0;
                 const d2 = d1 + n; 
                 
@@ -504,10 +602,9 @@
             }
         },
         {
-            // سؤال تداخل هدام (أنصاف)
             getQuestion: () => {
                 const d1 = 2.0;
-                const diff = Math.floor(Math.random() * 3) + 1.5; // 1.5, 2.5, 3.5
+                const diff = Math.floor(Math.random() * 3) + 1.5; 
                 const d2 = d1 + diff; 
                 
                 return {
@@ -530,13 +627,12 @@
             }
         },
         {
-            // أسئلة شروط وقواعد عامة
             getQuestion: () => {
                 const isDestructive = Math.random() > 0.5;
-                const m = Math.floor(Math.random() * 3) + 2; // 2, 3, 4
+                const m = Math.floor(Math.random() * 3) + 2; 
                 
                 if (isDestructive) {
-                    const correctAns = m + 0.5; // 2.5, 3.5, 4.5
+                    const correctAns = m + 0.5; 
                     return {
                         text: `من الناحية الفيزيائية، أيٌّ من قيم فرق المسار (ΔS) التالية تحقق الشرط الرياضي لحدوث <strong>تداخل هدّام كلي</strong> (ينتج عنه عقدة خمود)؟`,
                         options: [
@@ -552,7 +648,7 @@
                         `
                     };
                 } else {
-                    const correctAns = m; // 2, 3, 4
+                    const correctAns = m; 
                     return {
                         text: `من الناحية الفيزيائية، أيٌّ من قيم فرق المسار (ΔS) التالية تحقق الشرط الرياضي لحدوث <strong>تداخل بنّاء</strong> (ينتج عنه تقوية عظمى للموجات)؟`,
                         options: [
@@ -592,8 +688,8 @@
         shuffledOptions.forEach(option => {
             const btn = document.createElement('button');
             btn.className = 'option-btn'; 
-            btn.innerHTML = option.text;
-            btn.dataset.correct = option.correct; // لحفظ حالة الإجابة برمجياً
+            btn.innerHTML = `<span dir="rtl">${option.text}</span>`;
+            btn.dataset.correct = option.correct; 
             btn.onclick = () => checkStudentAnswer(option.correct, btn);
             optionsContainer.appendChild(btn);
         });
@@ -625,7 +721,6 @@
             selectedButton.style.backgroundColor = '#721c24'; 
             selectedButton.style.color = '#ffffff';
 
-            // تظليل الإجابة الصحيحة لتوضيحها للطالب
             document.querySelectorAll('.option-btn').forEach(btn => {
                 if (btn.dataset.correct === "true") {
                     btn.style.backgroundColor = '#28a745'; 
@@ -633,7 +728,6 @@
                 }
             });
 
-            // إظهار صندوق الحل التفصيلي
             solutionBox.innerHTML = currentSolutionHTML;
             solutionBox.style.display = "block";
             
@@ -642,7 +736,10 @@
     }
 
     window.onload = () => {
-        drawSimulation(); 
+        calculatedResult = preCalculate();
+        animState = 'result';
+        requestAnimationFrame(animationLoop);
+        
         generateNewQuestion();
         if ('speechSynthesis' in window) { window.speechSynthesis.getVoices(); }
     };
